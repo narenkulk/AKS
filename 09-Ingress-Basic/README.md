@@ -7,18 +7,20 @@
 [![Image](https://www.stacksimplify.com/course-images/azure-aks-ingress-basic.png "Azure AKS Kubernetes - Masterclass")](https://www.udemy.com/course/aws-eks-kubernetes-masterclass-devops-microservices/?referralCode=257C9AD5B5AF8D12D1E1)
 
 ### What are we going to learn?
+
 - We are going to create a **Static Public IP** for Ingress in Azure AKS
 - Associate that Public IP to **Ingress Controller** during installation.
-- We are going to create a namespace `ingress-basic` for Ingress Controller where all ingress controller related things will be placed. 
-- In future, we install **cert-manager** for SSL certificates also in same namespace. 
-- **Caution Note:** This namespace is for Ingress controller stuff, ingress resource we can create in any other namespaces and not an issue.  Only condition is create ingress resource and ingress pointed application in same namespace (Example: App1 and Ingress resource of App1 should be in same namespace)
+- We are going to create a namespace `ingress-basic` for Ingress Controller where all ingress controller related things will be placed.
+- In future, we install **cert-manager** for SSL certificates also in same namespace.
+- **Caution Note:** This namespace is for Ingress controller stuff, ingress resource we can create in any other namespaces and not an issue. Only condition is create ingress resource and ingress pointed application in same namespace (Example: App1 and Ingress resource of App1 should be in same namespace)
 - Create / Review Ingress Manifest
 - Deploy a simple Nginx App1 with Ingress manifest and test it
 - Clean-Up or delete application after testing
 
 ## Step-02: Create Static Public IP
+
 ```
-# Get the resource group name of the AKS cluster 
+# Get the resource group name of the AKS cluster
 az aks show --resource-group aks-rg1 --name aksdemo1 --query nodeResourceGroup -o tsv
 
 # TEMPLATE - Create a public IP address with the static allocation
@@ -27,13 +29,16 @@ az network public-ip create --resource-group <REPLACE-OUTPUT-RG-FROM-PREVIOUS-CO
 # REPLACE - Create Public IP: Replace Resource Group value
 az network public-ip create --resource-group MC_aks-rg1_aksdemo1_centralus --name myAKSPublicIPForIngress --sku Standard --allocation-method static --query publicIp.ipAddress -o tsv
 ```
+
 - Make a note of Static IP which we will use in next step when installing Ingress Controller
+
 ```
 # Make a note of Public IP created for Ingress
 52.154.156.139
 ```
 
 ## Step-03: Install Ingress Controller
+
 ```
 # Install Helm3 (if not installed)
 brew install helm
@@ -46,26 +51,26 @@ helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 helm repo add stable https://kubernetes-charts.storage.googleapis.com/
 helm repo update
 
-#  Customizing the Chart Before Installing. 
+#  Customizing the Chart Before Installing.
 helm show values ingress-nginx/ingress-nginx
 
 # Use Helm to deploy an NGINX ingress controller
-helm install ingress-nginx ingress-nginx/ingress-nginx \
-    --namespace ingress-basic \
-    --set controller.replicaCount=2 \
-    --set controller.nodeSelector."beta\.kubernetes\.io/os"=linux \
-    --set defaultBackend.nodeSelector."beta\.kubernetes\.io/os"=linux \
-    --set controller.service.externalTrafficPolicy=Local \
-    --set controller.service.loadBalancerIP="REPLACE_STATIC_IP" 
+helm install ingress-nginx ingress-nginx/ingress-nginx `
+    --namespace ingress-basic `
+    --set controller.replicaCount=2 `
+    --set controller.nodeSelector."beta\.kubernetes\.io/os"=linux `
+    --set defaultBackend.nodeSelector."beta\.kubernetes\.io/os"=linux `
+    --set controller.service.externalTrafficPolicy=Local `
+    --set controller.service.loadBalancerIP="23.96.50.201"
 
 # Replace Static IP captured in Step-02
-helm install ingress-nginx ingress-nginx/ingress-nginx \
+helm uninstall ingress-nginx ingress-nginx/ingress-nginx \
     --namespace ingress-basic \
     --set controller.replicaCount=2 \
     --set controller.nodeSelector."beta\.kubernetes\.io/os"=linux \
     --set defaultBackend.nodeSelector."beta\.kubernetes\.io/os"=linux \
     --set controller.service.externalTrafficPolicy=Local \
-    --set controller.service.loadBalancerIP="52.154.156.139" 
+    --set controller.service.loadBalancerIP="52.154.156.139"
 
 
 # List Services with labels
@@ -87,11 +92,13 @@ Primarily refer Settings -> Frontend IP Configuration
 ```
 
 ## Step-04: Review Application k8s manifests
+
 - 01-NginxApp1-Deployment.yml
 - 02-NginxApp1-ClusterIP-Service.yml
 - 03-Ingress-Basic.yml
 
 ## Step-05: Deploy Application k8s manifests and verify
+
 ```
 # Deploy
 kubectl apply -f kube-manifests/
@@ -115,15 +122,18 @@ kubectl logs -f <pod-name> -n ingress-basic
 ```
 
 ## Step-06: Clean-Up Apps
+
 ```
 # Delete Apps
 kubectl delete -f kube-manifests/
 ```
 
 ## Ingress Annotation Reference
+
 - https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/
 
 ## Other References
+
 - https://github.com/kubernetes/ingress-nginx
 - https://github.com/kubernetes/ingress-nginx/blob/master/charts/ingress-nginx/values.yaml
 - https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.34.1/deploy/static/provider/cloud/deploy.yaml
@@ -132,6 +142,7 @@ kubectl delete -f kube-manifests/
 - https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#ingress-v1-networking-k8s-io
 
 ## Important Note
+
 ```
 Ingress Admission Webhooks
 With nginx-ingress-controller version 0.25+, the nginx ingress controller pod exposes an endpoint that will integrate with the validatingwebhookconfiguration Kubernetes feature to prevent bad ingress from being added to the cluster. This feature is enabled by default since 0.31.0.

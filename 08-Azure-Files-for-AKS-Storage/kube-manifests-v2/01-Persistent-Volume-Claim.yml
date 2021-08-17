@@ -3,9 +3,10 @@ kind: PersistentVolumeClaim
 metadata:
   name: my-azurefile-pvc
 spec:
+  volumeName: my-azurefile-volume
   accessModes:
     - ReadWriteMany
-  storageClassName: azurefile # default AKS provisioned storage class in my AKS Cluster
+  storageClassName: "" # default AKS provisioned storage class in my AKS Cluster
   resources:
     requests:
       storage: 5Gi

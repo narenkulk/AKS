@@ -6,15 +6,17 @@ description: Pull Docker Images from Azure Container Registry using Service Prin
 # Azure AKS Pull Docker Images from ACR using Service Principal
 
 ## Step-00: Pre-requisites
+
 - We should have Azure AKS Cluster Up and Running.
 - We have created a new aksdemo2 cluster as part of Azure Virtual Nodes demo in previous section.
 - We are going to leverage the same cluster for all 3 demos planned for Azure Container Registry and AKS.
+
 ```
 # Configure Command Line Credentials
 az aks get-credentials --name aksdemo2 --resource-group aks-rg2
 
 # Verify Nodes
-kubectl get nodes 
+kubectl get nodes
 kubectl get nodes -o wide
 
 # Verify aci-connector-linux
@@ -25,33 +27,34 @@ kubectl logs -f $(kubectl get po -n kube-system | egrep -o 'aci-connector-linux-
 ```
 
 ## Step-01: Introduction
-- We are going to pull Images from Azure Container Registry which is not attached to AKS Cluster. 
+
+- We are going to pull Images from Azure Container Registry which is not attached to AKS Cluster.
 - We are going to do that using Azure Service Principals.
 - Build a Docker Image from our Local Docker on our Desktop
 - Push to Azure Container Registry
-- Create Service Principal and using that create Kubernetes Secret. 
+- Create Service Principal and using that create Kubernetes Secret.
 - Using Kubernetes Secret associated to Pod Specificaiton, pull the docker image from Azure Container Registry and Schedule on Azure AKS NodePools
-
 
 [![Image](https://stacksimplify.com/course-images/azure-kubernetes-service-and-acr-nodepools.png "Azure AKS Kubernetes - Masterclass")](https://stacksimplify.com/course-images/azure-kubernetes-service-and-acr-nodepools.png)
 
-
 ## Step-02: Create Azure Container Registry
+
 - Go to Services -> Container Registries
 - Click on **Add**
 - Subscription: StackSimplify-Paid-Subsciption
 - Resource Group: acr-rg2
-- Registry Name: acrdemo2ss   (NAME should be unique across Azure Cloud)
+- Registry Name: acrdemo2ss (NAME should be unique across Azure Cloud)
 - Location: Central US
-- SKU: Basic  (Pricing Note: $0.167 per day)
+- SKU: Basic (Pricing Note: $0.167 per day)
 - Click on **Review + Create**
 - Click on **Create**
 
 ## Step-02: Build Docker Image Locally
+
 ```
 # Change Directory
 cd docker-manifests
- 
+
 # Docker Build
 docker build -t acr-app2:v1 .
 
@@ -61,6 +64,7 @@ docker images acr-app2:v1
 ```
 
 ## Step-03: Run locally and test
+
 ```
 # Run locally and Test
 docker run --name acr-app2 --rm -p 80:80 -d acr-app2:v1
@@ -72,7 +76,8 @@ http://localhost
 docker stop acr-app2
 ```
 
-## Step-04: Enable Docker Login for ACR Repository 
+## Step-04: Enable Docker Login for ACR Repository
+
 - Go to Services -> Container Registries -> acrdemo2ss
 - Go to **Access Keys**
 - Click on **Enable Admin User**
@@ -81,6 +86,7 @@ docker stop acr-app2
 ## Step-05: Push Docker Image to Azure Container Registry
 
 ### Build, Test Locally, Tag and Push to ACR
+
 ```
 # Export Command
 export ACR_REGISTRY=acrdemo2ss.azurecr.io
@@ -95,7 +101,7 @@ docker login $ACR_REGISTRY
 # Tag
 docker tag acr-app2:v1  $ACR_REGISTRY/$ACR_NAMESPACE/$ACR_IMAGE_NAME:$ACR_IMAGE_TAG
 It replaces as below
-docker tag acr-app2:v1 acrdemo2ss.azurecr.io/app2/acr-app2:v1
+docker tag acr-app2:v1 acrnk2demo3.azurecr.io/app2/acr-app2:v1
 
 # List Docker Images to verify
 docker images acr-app2:v1
@@ -104,14 +110,18 @@ docker images $ACR_REGISTRY/$ACR_NAMESPACE/$ACR_IMAGE_NAME:$ACR_IMAGE_TAG
 # Push Docker Images
 docker push $ACR_REGISTRY/$ACR_NAMESPACE/$ACR_IMAGE_NAME:$ACR_IMAGE_TAG
 ```
+
 ### Verify Docker Image in ACR Repository
+
 - Go to Services -> Container Registries -> acrdemo2ss
 - Go to **Repositories** -> **app2/acr-app2**
 
 ## Step-05: Create Service Principal to access Azure Container Registry
+
 - Review file: shell-script/generate-service-principal.sh
 - Update ACR_NAME with your container registry name
 - Update SERVICE_PRINCIPAL_NAME as desired
+
 ```sh
 #!/bin/bash
 
@@ -141,6 +151,7 @@ echo "Service principal password: $SP_PASSWD"
 ```
 
 ## Step-06: Create Image Pull Secret
+
 ```
 # Template
 kubectl create secret docker-registry <secret-name> \
@@ -150,32 +161,34 @@ kubectl create secret docker-registry <secret-name> \
     --docker-password=<service-principal-password>
 
 # Replace
-kubectl create secret docker-registry acrdemo2ss-secret \
-    --namespace default \
-    --docker-server=acrdemo2ss.azurecr.io \
-    --docker-username=80beacfe-7176-4ff5-ad22-dbb15528a9a8 \
-    --docker-password=0zjUzGzSx3_.xi1SC40VcWkdVyl8Ml8QNj    
+kubectl create secret docker-registry acrnk2demo3-secret `
+    --namespace default `
+    --docker-server=acrnk2demo3.azurecr.io `
+    --docker-username=bd81fc71-8de7-4c98-9bc7-51c3a58c1198 `
+    --docker-password=TV~wnPe~2NCpyhwNLMMn7fp-SRWwIk3U18
 
 # List Secrets
-kubectl get secrets    
+kubectl get secrets
 ```
 
-
 ## Step-07: Review, Update & Deploy to AKS & Test
+
 ### Update Deployment Manifest with Image Name, ImagePullSecrets
+
 ```yaml
-    spec:
-      containers:
-        - name: acrdemo-localdocker
-          image: acrdemo2ss.azurecr.io/app2/acr-app2:v1
-          imagePullPolicy: Always
-          ports:
-            - containerPort: 80
-      imagePullSecrets:
-        - name: acrdemo2ss-secret           
+spec:
+  containers:
+    - name: acrdemo-localdocker
+      image: acrdemo2ss.azurecr.io/app2/acr-app2:v1
+      imagePullPolicy: Always
+      ports:
+        - containerPort: 80
+  imagePullSecrets:
+    - name: acrdemo2ss-secret
 ```
 
 ### Deploy to AKS and Test
+
 ```
 # Deploy
 kubectl apply -f kube-manifests/
@@ -194,12 +207,13 @@ http://<External-IP-from-get-service-output>
 ```
 
 ## Step-07: Clean-Up
+
 ```
 # Delete Applications
 kubectl delete -f kube-manifests/
 ```
 
-
 ## References
+
 - [Azure Container Registry Authentication - Options](https://docs.microsoft.com/en-us/azure/container-registry/container-registry-authentication)
 - [Pull images from an Azure container registry to a Kubernetes cluster](https://docs.microsoft.com/en-us/azure/container-registry/container-registry-auth-kubernetes)
